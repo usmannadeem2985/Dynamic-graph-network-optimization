@@ -1,4 +1,6 @@
 # Dynamic-graph-network-optimization
+# Usman Nadeem i212985
+# Muhammad Nehal i212998
 Implementing SOSP and MOSP.
 Each phase has a seperate folder created.
 Read the ACM Paper down the link below for more insights.
