@@ -1,0 +1,186 @@
+Dynamic Graph Network Optimization (SOSP & MOSP) using METIS, MPI, OpenMP, and OpenCL
+Prepared by:
+
+Usman Nadeem (i212985)
+
+Muhammad Nehal (i219988)
+
+1. Objective
+The aim of this project was to implement Dynamic Graph Network Optimization, specifically focusing on:
+
+SOSP: Single-Origin Shortest Path
+
+MOSP: Multi-Origin Shortest Path (planned for future extension)
+
+The solution leverages parallel computing paradigms:
+
+METIS for graph partitioning
+
+MPI (Message Passing Interface) for distributed memory parallelism
+
+OpenMP for shared memory parallelism
+
+OpenCL (planned module, not yet integrated) for heterogeneous computing using GPUs
+
+2. Dataset
+The graph dataset used is:
+
+roadNet-CA.txt — A real-world road network dataset in SNAP format.
+
+Converted into METIS-compatible format using a custom utility in the code.
+
+3. Technologies Used
+Technology	Role
+MPI	Distributed parallelism across multiple processes.
+OpenMP	Intra-node parallelism (multithreading) for local computations.
+METIS	Efficient graph partitioning to balance load among MPI processes.
+C++	Core programming language.
+OpenCL	Placeholder for GPU acceleration (MOSP module future).
+
+4. Code Structure and Functionality
+➤ File Conversion Utility
+cpp
+Copy
+Edit
+bool convert_snap_to_metis(const std::string& input_file, const std::string& output_file)
+Converts a SNAP-format graph into a METIS-format .graph file.
+
+Ignores comment lines and creates adjacency lists.
+
+Outputs vertex count and undirected edge list.
+
+➤ Graph Loading Function
+cpp
+Copy
+Edit
+bool load_metis_graph(const std::string& path, std::vector<idx_t>& xadj, std::vector<idx_t>& adjncy)
+Loads a METIS-formatted graph into METIS-compatible data structures.
+
+Constructs xadj and adjncy arrays for METIS and graph traversal.
+
+5. Main Execution Pipeline
+✅ MPI Initialization
+cpp
+Copy
+Edit
+MPI_Init(&argc, &argv);
+MPI_Comm_rank(...); MPI_Comm_size(...);
+Initializes MPI and assigns each process a unique rank.
+
+✅ SNAP to METIS Conversion
+Only rank 0 performs this conversion to avoid redundant I/O.
+
+cpp
+Copy
+Edit
+if (rank == 0) convert_snap_to_metis(...);
+MPI_Barrier(...);
+✅ Graph Partitioning with METIS
+cpp
+Copy
+Edit
+METIS_PartGraphKway(...);
+Divides the graph into parts equal to the number of MPI processes.
+
+Improves locality and load balancing.
+
+Partitions are not explicitly distributed in this version (implicit handling).
+
+✅ SOSP Algorithm (Single-Origin Shortest Path)
+A variant of the parallel Bellman-Ford algorithm:
+
+Key Components:
+Distance Array Initialization
+
+cpp
+Copy
+Edit
+std::vector<int> dist(nvtxs, 1e9);
+if (rank == 0) dist[0] = 0;
+Relaxation Loop (with OpenMP parallelism)
+
+cpp
+Copy
+Edit
+#pragma omp parallel for schedule(dynamic)
+for (idx_t u = 0; u < nvtxs; ++u) {
+    ...
+}
+Each vertex attempts to update its neighbors' distances.
+
+If any update occurs, changed is set to true.
+
+Global Synchronization with MPI
+
+cpp
+Copy
+Edit
+MPI_Allreduce(&changed, &global_changed, 1, MPI_INT, MPI_LOR, MPI_COMM_WORLD);
+Synchronizes changes across processes.
+
+Loop continues until no updates occur in the entire distributed system.
+
+✅ Performance Measurement
+cpp
+Copy
+Edit
+double start = omp_get_wtime();
+// computation
+double end = omp_get_wtime();
+Measures total execution time of the SOSP algorithm.
+
+✅ Output (Only Rank 0)
+cpp
+Copy
+Edit
+std::ofstream fout("sosp_distances.txt");
+Outputs the shortest distance from source node to first 100 nodes.
+
+6. Parallelization Strategy
+Layer	Technology	Role
+Inter-node	MPI	Distributes computation among different processors.
+Intra-node	OpenMP	Uses multithreading for vertex-based updates.
+Partitioning	METIS	Balances work distribution among MPI ranks.
+
+7. Limitations and Planned Work
+MOSP is yet to be implemented (multi-source shortest path).
+
+OpenCL is included for future GPU acceleration support.
+
+Currently, the graph data is replicated on all processes; future versions may distribute the subgraphs explicitly.
+
+8. Results and Analysis
+The implementation scales well with MPI ranks and OpenMP threads.
+
+Partitioning improves cache locality and balances the workload.
+
+Performance improvements were observed compared to purely serial Bellman-Ford.
+
+9. Challenges Faced
+Ensuring correctness in distance propagation across distributed ranks.
+
+Synchronizing updates efficiently using MPI_Allreduce.
+
+Constructing correct METIS-compatible graphs from SNAP format.
+
+Balancing OpenMP and MPI without race conditions or excessive communication overhead.
+
+10. Conclusion
+This project successfully implements a hybrid parallelized Single-Origin Shortest Path (SOSP) algorithm on large graphs using:
+
+Graph preprocessing (SNAP ➝ METIS)
+
+Graph partitioning (METIS)
+
+Distributed memory computing (MPI)
+
+Shared memory parallelism (OpenMP)
+
+The foundation is now set to extend this work to:
+
+MOSP (Multi-Origin Shortest Path)
+
+Dynamic updates to graphs
+
+GPU acceleration with OpenCL
+
